@@ -1,0 +1,74 @@
+name: Application CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - release/*
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit Security Scan
+        run: bandit -r . -f html -o bandit-report.html
+
+      - name: Upload Bandit Report to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y awscli
+          aws s3 cp bandit-report.html s3://dev-app-s3name/path/to/report/bandit-report.html --region $AWS_REGION
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/hello-world-flask:latest .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/hello-world-flask:latest
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov Terraform Scan
+        run: checkov -d ./terraform-infra-deployment -o html > checkov-report.html
+
+      - name: Upload Checkov HTML Report to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws s3 cp checkov-report.html s3://your-bucket-name/path/to/report/checkov-report.html --region $AWS_REGION
+
+      - name: Deploy to EC2
+        env:
+          EC2_IP: ${{ secrets.EC2_IP }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY ec2-user@$EC2_IP \
+          'docker pull ${{ secrets.DOCKER_USERNAME }}/hello-world-flask:latest && docker run -d -p 80:8080 ${{ secrets.DOCKER_USERNAME }}/hello-world-flask:latest'
