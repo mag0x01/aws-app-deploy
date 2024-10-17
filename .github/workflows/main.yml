@@ -44,7 +44,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           sudo apt-get update && sudo apt-get install -y awscli
-          aws s3 cp bandit-report.html s3://dev-py-s3/bandit_report/bandit-report.html --region $AWS_REGION
+          aws s3 cp bandit-report.html s3://dev-py-s3/bandit_report/bandit-report.html --region ap-southeast-1
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
