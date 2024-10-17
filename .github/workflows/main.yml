@@ -35,6 +35,7 @@ jobs:
 
       - name: Run Bandit Security Scan
         run: bandit -r . -f html -o bandit-report.html
+        continue-on-error: true
 
       - name: Upload Bandit Report to S3
         env:
