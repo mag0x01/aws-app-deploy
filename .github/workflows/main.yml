@@ -4,9 +4,22 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose an action: build, deploy, or build & deploy'
+        required: true
+        default: 'build'
+        type: choice
+        options:
+          - build
+          - deploy
+          - build_and_deploy
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event.inputs.action == 'build' || github.event.inputs.action == 'build_and_deploy' }}
 
     steps:
       - name: Checkout code
@@ -47,6 +60,11 @@ jobs:
       - name: Push Docker image to Docker Hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/hello-world-flask:latest
 
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.action == 'deploy' || github.event.inputs.action == 'build_and_deploy' }}
+
+    steps:
       - name: Deploy to EC2
         env:
           EC2_IP: ${{ secrets.EC2_IP }}
