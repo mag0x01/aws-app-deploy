@@ -3,11 +3,7 @@ name: Application CI/CD Pipeline
 on:
   push:
     branches:
-      - release/*
-  pull_request:
-    branches:
       - main
-
 jobs:
   build:
     runs-on: ubuntu-latest
